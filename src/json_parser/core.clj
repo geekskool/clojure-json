@@ -10,17 +10,12 @@
 (declare parser-factory)
 
 (defn process-file [file-name]
-  (with-open [rdr (BufferedReader. (FileReader. file-name))]
-    (read-string (doseq [line (line-seq rdr)]))))
+  (slurp file-name))
 
-(defn -main
-  "I don't do a whole lot ... yet."
-  [& args]
-  (println (parser-factory [array-parser object-parser] (process-file "/home/pankaj/Documents/test.json"))))
+(defn -main [& args]
+  (println (str (parser-factory [array-parser object-parser] (process-file "/home/pankaj/Documents/test.json")))))
 
-(defn boolean-parser
-  "Boolean Parser"
-  [input-string]
+(defn boolean-parser [input-string]
    (cond
     (< (count input-string) 4) nil 
     (and (< (count (trim input-string)) 5) (not= (subs input-string 0 4) "true"))  nil
@@ -28,39 +23,29 @@
     (= (subs input-string 0 5) "false") [false (trim (subs input-string 5))]
     (> (count input-string) 4) nil))
 
-(defn null-parser
-  "Null Parser"
-  [input-string]
+(defn null-parser [input-string]
   (cond
    (< (count input-string) 4) nil
    (= (subs input-string 0 4) "null") [nil (trim (subs input-string 4))]
     "default" nil)) 
 
-(defn string-parser 
-  "String Parser"
-  [input-string]
+(defn string-parser [input-string]
   (if (= (nth input-string 0) \")
-    [(trim (subs input-string 1 (+ (.indexOf (subs input-string (+ (.indexOf input-string "\"") 1)) "\"") 1)))
+    [(trim (clojure.string/replace (subs input-string 1 (+ (.indexOf (subs input-string (+ (.indexOf input-string "\"") 1)) "\"") 1)) #"\\.*" ""))
      (trim (subs input-string (+ (.indexOf (subs input-string (+ (.indexOf input-string "\"") 1)) "\"") 2)))]
     nil))
 
-(defn comma-parser
-  "Comma Parser"
-  [input-string]
+(defn comma-parser [input-string]
   (if (= (nth (trim input-string) 0) \,)
     [(trim (subs (trim input-string) 1))]
     nil))
 
-(defn colon-parser
-  "Colon Parser"
-  [input-string]
+(defn colon-parser [input-string]
   (if (= (nth (trim input-string) 0) \:)
     [(trim (subs (trim input-string) 1))]
     nil))
 
-(defn number-parser 
-  "Number Parser"
-  [input-string]
+(defn number-parser [input-string]
   (loop [x (trim input-string), num []]
     (if (or (= (nth (trim x) 0) \:) (= (nth (trim x) 0) \,) (= (nth (trim x) 0) \]) (= (nth (trim x) 0) \}))
       (let [number (apply str num)]
@@ -69,9 +54,7 @@
           nil)) 
       (recur (trim (subs x 1)) (conj num (nth x 0))))))
 
-(defn parser-factory
-  "Parser factory"
-  [func input-string]
+(defn parser-factory [func input-string]
   (if (empty? func)
     nil
     (loop [x func]
@@ -81,9 +64,7 @@
           ((first x) (trim input-string))
           (recur (drop 1 x)))))))
 
-(defn object-parser
-  "Object Parser"
-  [input-string]
+(defn object-parser [input-string]
   (if (= (nth (trim input-string) 0) \{)  
     (loop [x (trim (subs (trim (str input-string)) 1)), accumulating-total {}]
       (if (not= (string-parser x) nil)
@@ -97,9 +78,7 @@
         nil))
     nil))
 
-(defn array-parser 
-  "Array Parser"
-  [input-string]
+(defn array-parser [input-string]
   (if (= (nth (trim input-string) 0) \[) 
     (loop [x (trim (subs (trim (str input-string)) 1)), accumulating-total []]
       (let [parsed (parser-factory [array-parser comma-parser object-parser number-parser boolean-parser string-parser null-parser] x)]
