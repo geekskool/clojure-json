@@ -30,28 +30,24 @@
     "default" nil)) 
 
 (defn string-parser [input-string]
-  (if (= (nth input-string 0) \")
+  (when (= (nth input-string 0) \")
     [(trim (clojure.string/replace (subs input-string 1 (+ (.indexOf (subs input-string (+ (.indexOf input-string "\"") 1)) "\"") 1)) #"\\.*" ""))
-     (trim (subs input-string (+ (.indexOf (subs input-string (+ (.indexOf input-string "\"") 1)) "\"") 2)))]
-    nil))
+     (trim (subs input-string (+ (.indexOf (subs input-string (+ (.indexOf input-string "\"") 1)) "\"") 2)))]))
 
 (defn comma-parser [input-string]
-  (if (= (nth (trim input-string) 0) \,)
-    [(trim (subs (trim input-string) 1))]
-    nil))
+  (when (= (nth (trim input-string) 0) \,)
+    [(trim (subs (trim input-string) 1))]))
 
 (defn colon-parser [input-string]
-  (if (= (nth (trim input-string) 0) \:)
-    [(trim (subs (trim input-string) 1))]
-    nil))
+  (when (= (nth (trim input-string) 0) \:)
+    [(trim (subs (trim input-string) 1))]))
 
 (defn number-parser [input-string]
   (loop [x (trim input-string), num []]
     (if (or (= (nth (trim x) 0) \:) (= (nth (trim x) 0) \,) (= (nth (trim x) 0) \]) (= (nth (trim x) 0) \}))
       (let [number (apply str num)]
-        (if (or (not= (re-matches #"\d+" number) nil) (not= (re-find #"\d+.+e+\d+" number) nil) (not= (re-find #"\d+.+\d+" number) nil))
-          [(read-string number) x]
-          nil)) 
+        (when (or (not= (re-matches #"\d+" number) nil) (not= (re-find #"\d+.+e+\d+" number) nil) (not= (re-find #"\d+.+\d+" number) nil))
+          [(read-string number) x])) 
       (recur (trim (subs x 1)) (conj num (nth x 0))))))
 
 (defn parser-factory [func input-string]
@@ -63,24 +59,20 @@
           (recur (drop 1 x)))))))
 
 (defn object-parser [input-string]
-  (if (= (nth (trim input-string) 0) \{)  
+  (when (= (nth (trim input-string) 0) \{)  
     (loop [x (trim (subs (trim (str input-string)) 1)), accumulating-total {}]
-      (if (not= (string-parser x) nil)
+      (when (not= (string-parser x) nil)
         (let [remaining (string-parser x)]
-          (if (not= (colon-parser (last remaining)) nil)
+          (when (not= (colon-parser (last remaining)) nil)
             (let [parsed (parser-factory [array-parser comma-parser object-parser boolean-parser string-parser null-parser number-parser] (trim (str (last (colon-parser (last remaining))))))]
               (if (= (nth (trim (last parsed)) 0) \})
                 (if (= (count (last parsed)) 1) (conj accumulating-total [(first remaining) (first parsed)]) [(conj accumulating-total [(first remaining) (first parsed)]) (subs (trim (last parsed)) 1)])
-                (recur (last (comma-parser (last parsed))) (conj accumulating-total [(first remaining) (first parsed)] )))) 
-            nil))
-        nil))
-    nil))
+                (recur (last (comma-parser (last parsed))) (conj accumulating-total [(first remaining) (first parsed)] ))))))))))
 
 (defn array-parser [input-string]
-  (if (= (nth (trim input-string) 0) \[) 
+  (when (= (nth (trim input-string) 0) \[) 
     (loop [x (trim (subs (trim (str input-string)) 1)), accumulating-total []]
       (let [parsed (parser-factory [array-parser comma-parser object-parser number-parser boolean-parser string-parser null-parser] x)]
        (if (= (nth x 0) \])
          (if (= (count x) 1) accumulating-total [accumulating-total (trim (subs x 1))])
-         (recur (trim (str (last parsed))) (if (= (count parsed) 1) accumulating-total (conj accumulating-total (first parsed)))))))
-    nil))
+         (recur (trim (str (last parsed))) (if (= (count parsed) 1) accumulating-total (conj accumulating-total (first parsed)))))))))
