@@ -13,7 +13,7 @@
   (slurp file-name))
 
 (defn -main [& args]
-  (println (str (parser-factory [array-parser object-parser] (process-file "/home/pankaj/Documents/test.json")))))
+  (println (str (parser-factory [array-parser object-parser] (process-file "/home/lein/file/test.json")))))
 
 (defn boolean-parser [input-string]
    (cond
@@ -55,11 +55,9 @@
       (recur (trim (subs x 1)) (conj num (nth x 0))))))
 
 (defn parser-factory [func input-string]
-  (if (empty? func)
-    nil
+  (when (not (empty? func))
     (loop [x func]
-      (if (empty? x)
-        nil
+      (when (not (empty? x))
         (if (not= ((first x) (trim input-string)) nil)
           ((first x) (trim input-string))
           (recur (drop 1 x)))))))
